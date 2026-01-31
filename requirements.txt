@@ -1,0 +1,87 @@
+# Bitcoin CLI Wrapper - Python Dependencies
+# Production requirements
+
+# HTTP library for RPC calls
+requests>=2.31.0,<3.0.0
+
+# URL parsing and validation
+urllib3>=2.0.0,<3.0.0
+
+# JSON handling (included in stdlib, but specified for clarity)
+# json - built-in
+
+# Cryptography and hashing (included in stdlib, but specified for clarity)
+# hashlib - built-in
+
+# Environment variable handling
+python-dotenv>=1.0.0,<2.0.0
+
+# Additional security utilities
+cryptography>=41.0.0,<42.0.0
+
+# =============================================================================
+# DEVELOPMENT DEPENDENCIES (install with: pip install -r requirements-dev.txt)
+# =============================================================================
+
+# Testing framework
+# pytest>=7.4.0,<8.0.0
+# pytest-cov>=4.1.0,<5.0.0
+# pytest-mock>=3.11.0,<4.0.0
+
+# Code formatting and linting
+# black>=23.7.0,<24.0.0
+# flake8>=6.0.0,<7.0.0
+# isort>=5.12.0,<6.0.0
+
+# Type checking
+# mypy>=1.5.0,<2.0.0
+# types-requests>=2.31.0
+
+# Documentation
+# sphinx>=7.1.0,<8.0.0
+# sphinx-rtd-theme>=1.3.0,<2.0.0
+
+# =============================================================================
+# OPTIONAL DEPENDENCIES
+# =============================================================================
+
+# For enhanced JSON handling (optional)
+# ujson>=5.8.0,<6.0.0
+
+# For advanced logging (optional)
+# structlog>=23.1.0,<24.0.0
+
+# For configuration validation (optional)
+# pydantic>=2.0.0,<3.0.0
+
+# For async support (future enhancement)
+# aiohttp>=3.8.5,<4.0.0
+# asyncio - built-in
+
+# =============================================================================
+# SECURITY CONSIDERATIONS
+# =============================================================================
+
+# All dependencies are pinned to major versions to prevent supply chain attacks
+# Regularly update dependencies and check for security vulnerabilities
+# Use: pip audit (or safety check) to scan for known vulnerabilities
+
+# =============================================================================
+# INSTALLATION NOTES
+# =============================================================================
+
+# For production:
+# pip install -r requirements.txt
+
+# For development:
+# pip install -r requirements.txt
+# pip install -r requirements-dev.txt
+
+# For Docker builds:
+# Dependencies are installed automatically during container build
+
+# For virtual environment:
+# python -m venv venv
+# source venv/bin/activate  # On Windows: venv\Scripts\activate
+# pip install --upgrade pip
+# pip install -r requirements.txt

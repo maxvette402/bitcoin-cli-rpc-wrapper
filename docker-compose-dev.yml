@@ -1,0 +1,306 @@
+version: '3.8'
+
+# =============================================================================
+# DEVELOPMENT OVERRIDE FOR DOCKER COMPOSE
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+# =============================================================================
+
+services:
+  # ===========================================================================
+  # BITCOIN NODE - DEVELOPMENT CONFIGURATION
+  # ===========================================================================
+  bitcoin-node:
+    # Use regtest mode for development
+    environment:
+      - BITCOIN_NETWORK=regtest
+    
+    # Add development volumes
+    volumes:
+      - bitcoin_data:/bitcoin/.bitcoin
+      - ./config/bitcoin-dev.conf:/bitcoin/.bitcoin/bitcoin.conf:ro
+      - ./certs:/bitcoin/.bitcoin/certs:ro
+      - ./logs/bitcoin:/bitcoin/.bitcoin/logs
+      - ./scripts:/bitcoin/scripts:ro  # Development scripts
+    
+    # Override ports for regtest
+    ports:
+      - "18444:18443"  # P2P regtest
+      - "18443:18332"  # RPC regtest
+    
+    # Development command with faster block generation
+    command: [
+      "bitcoind",
+      "-regtest",
+      "-server",
+      "-rpcbind=0.0.0.0",
+      "-rpcallowip=0.0.0.0/0",
+      "-rpcuser=${BITCOIN_RPC_USER}",
+      "-rpcpassword=${BITCOIN_RPC_PASSWORD}",
+      "-fallbackfee=0.001",
+      "-mintxfee=0.0001",
+      "-deprecatedrpc=accounts",
+      "-printtoconsole"
+    ]
+    
+    # Faster health check for development
+    healthcheck:
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # ===========================================================================
+  # BITCOIN CLI WRAPPER - DEVELOPMENT CONFIGURATION
+  # ===========================================================================
+  bitcoin-wrapper:
+    # Override build target for development
+    build:
+      target: development
+    
+    # Development environment
+    environment:
+      - BITCOIN_RPC_HOST=bitcoin-node
+      - BITCOIN_RPC_PORT=18332  # Regtest RPC port
+      - BITCOIN_RPC_USER=${BITCOIN_RPC_USER}
+      - BITCOIN_RPC_PASSWORD=${BITCOIN_RPC_PASSWORD}
+      - BITCOIN_RPC_TIMEOUT=10
+      - BITCOIN_NETWORK=regtest
+      - BITCOIN_RPC_USE_SSL=false
+      - BITCOIN_RPC_SSL_VERIFY=false
+      - LOG_LEVEL=DEBUG
+      - LOG_FILE=/app/logs/bitcoin_wrapper_dev.log
+      - PYTHONPATH=/app
+    
+    # Mount source code for hot reload
+    volumes:
+      - .:/app:cached
+      - wrapper_dev_logs:/app/logs
+      - /app/__pycache__  # Exclude cache directory
+    
+    # Override command for development
+    command: ["/bin/bash"]
+    
+    # Keep container running for development
+    tty: true
+    stdin_open: true
+    
+    # Faster health check
+    healthcheck:
+      interval: 30s
+      timeout: 5s
+      retries: 2
+      start_period: 5s
+    
+    # Development networks
+    networks:
+      - bitcoin-network
+      - dev-network
+
+  # ===========================================================================
+  # DEVELOPMENT TOOLS
+  # ===========================================================================
+  
+  # Development database for testing
+  test-db:
+    image: postgres:15-alpine
+    container_name: bitcoin-test-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=bitcoin_test
+      - POSTGRES_USER=test
+      - POSTGRES_PASSWORD=test
+    volumes:
+      - test_db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - dev-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for caching (development)
+  redis-dev:
+    image: redis:7-alpine
+    container_name: bitcoin-redis-dev
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_dev_data:/data
+    networks:
+      - dev-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # Development proxy with auto-reload
+  nginx-dev:
+    image: nginx:alpine
+    container_name: bitcoin-nginx-dev
+    restart: unless-stopped
+    volumes:
+      - ./config/nginx-dev.conf:/etc/nginx/nginx.conf:ro
+      - ./logs/nginx:/var/log/nginx
+      - .:/app:ro  # Mount source for serving static files
+    ports:
+      - "8080:80"
+      - "8443:443"
+    networks:
+      - bitcoin-network
+      - dev-network
+    depends_on:
+      - bitcoin-wrapper
+
+  # Documentation server
+  docs:
+    build:
+      context: .
+      dockerfile: Dockerfile.docs
+    container_name: bitcoin-docs
+    restart: unless-stopped
+    volumes:
+      - ./docs:/docs:cached
+      - docs_build:/docs/_build
+    ports:
+      - "8000:8000"
+    networks:
+      - dev-network
+    command: ["sphinx-autobuild", "/docs", "/docs/_build", "--host", "0.0.0.0", "--port", "8000"]
+
+  # Development monitoring
+  grafana-dev:
+    image: grafana/grafana:latest
+    container_name: bitcoin-grafana-dev
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_dev_data:/var/lib/grafana
+      - ./config/grafana:/etc/grafana/provisioning:ro
+    ports:
+      - "3000:3000"
+    networks:
+      - dev-network
+
+  prometheus-dev:
+    image: prom/prometheus:latest
+    container_name: bitcoin-prometheus-dev
+    restart: unless-stopped
+    volumes:
+      - ./config/prometheus-dev.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_dev_data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - dev-network
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+
+# =============================================================================
+# DEVELOPMENT NETWORKS
+# =============================================================================
+networks:
+  dev-network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.21.0.0/16
+
+# =============================================================================
+# DEVELOPMENT VOLUMES
+# =============================================================================
+volumes:
+  wrapper_dev_logs:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${WRAPPER_DEV_LOGS_DIR:-./logs/dev}
+
+  test_db_data:
+    driver: local
+
+  redis_dev_data:
+    driver: local
+
+  docs_build:
+    driver: local
+
+  grafana_dev_data:
+    driver: local
+
+  prometheus_dev_data:
+    driver: local
+
+# =============================================================================
+# DEVELOPMENT ENVIRONMENT OVERRIDES
+# =============================================================================
+
+# Override resource limits for development (more relaxed)
+x-dev-resources: &dev-resources
+  deploy:
+    resources:
+      limits:
+        memory: 1G
+        cpus: '1.0'
+      reservations:
+        memory: 256M
+        cpus: '0.25'
+
+# Development logging (more verbose)
+x-dev-logging: &dev-logging
+  logging:
+    driver: "json-file"
+    options:
+      max-size: "10m"
+      max-file: "1"
+
+# Apply development overrides
+services:
+  bitcoin-node:
+    <<: *dev-resources
+    <<: *dev-logging
+
+  bitcoin-wrapper:
+    <<: *dev-resources
+    <<: *dev-logging
+
+# =============================================================================
+# DEVELOPMENT SCRIPTS AND HELPERS
+# =============================================================================
+
+# To use this development setup:
+# 
+# 1. Start development environment:
+#    docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+#
+# 2. Access development shell:
+#    docker-compose exec bitcoin-wrapper /bin/bash
+#
+# 3. Run tests in development:
+#    docker-compose exec bitcoin-wrapper python -m pytest tests/ -v
+#
+# 4. View logs:
+#    docker-compose logs -f bitcoin-wrapper
+#
+# 5. Generate test blocks (regtest):
+#    docker-compose exec bitcoin-node bitcoin-cli -regtest -rpcuser=$BITCOIN_RPC_USER -rpcpassword=$BITCOIN_RPC_PASSWORD generate 10
+#
+# 6. Access services:
+#    - Grafana: http://localhost:3000 (admin/admin)
+#    - Prometheus: http://localhost:9090
+#    - Documentation: http://localhost:8000
+#    - Nginx: http://localhost:8080
+#
+# 7. Stop development environment:
+#    docker-compose -f docker-compose.yml -f docker-compose.dev.yml down
