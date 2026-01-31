@@ -43,7 +43,7 @@ A secure, enterprise-grade Bitcoin RPC client with CLI interface, built with Pyt
 ```bash
 # Clone the repository
 git clone <repository-url>
-cd bitcoin-CLI-RPC-weapper
+cd bitcoin-cli-rpc-weapper
 
 # Set up virtual environment
 make setup
@@ -61,7 +61,7 @@ cp .env.example .env
 ```bash
 # Clone the repository
 git clone <repository-url>
-cd bitcoin-CLI-RPC-weapper
+cd bitcoin-cli-rpc-weapper
 
 # Start with Docker Compose
 make up
