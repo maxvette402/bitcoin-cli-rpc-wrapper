@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# Bitcoin CLI Wrapper - Launcher Script
+# This script activates the venv and runs the Bitcoin CLI wrapper
+
+# Get the directory where this script is located
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+# Path to virtual environment
+VENV_PATH="${SCRIPT_DIR}/venv"
+
+# Check if venv exists
+if [ ! -d "$VENV_PATH" ]; then
+    echo "❌ Error: Virtual environment not found at $VENV_PATH"
+    echo "Run 'make setup' first to create the virtual environment."
+    exit 1
+fi
+
+# Check if venv has been set up (has python)
+if [ ! -f "$VENV_PATH/bin/python3" ]; then
+    echo "❌ Error: Virtual environment appears to be incomplete."
+    echo "Run 'make setup' to set up the development environment."
+    exit 1
+fi
+
+# Activate venv and run the wrapper
+# Note: We use a subshell to avoid affecting the user's current shell
+(
+    # Activate virtual environment
+    source "$VENV_PATH/bin/activate"
+
+    # Set PYTHONPATH
+    export PYTHONPATH="$PYTHONPATH:$SCRIPT_DIR"
+
+    # Run the Bitcoin CLI wrapper with all arguments passed to this script
+    python3 "$SCRIPT_DIR/src/main_wrapper.py" "$@"
+
+    # Capture exit code
+    exit_code=$?
+
+    # Deactivate is automatic when subshell exits
+    exit $exit_code
+)

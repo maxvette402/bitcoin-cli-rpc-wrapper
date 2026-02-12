@@ -45,11 +45,18 @@ A secure, enterprise-grade Bitcoin RPC client with CLI interface, built with Pyt
 git clone <repository-url>
 cd bitcoin-cli-rpc-weapper
 
-# Set up virtual environment
+# Set up virtual environment (default location: ./venv)
 make setup
 
 # Activate virtual environment
 source venv/bin/activate
+
+# Alternative: Use custom venv location (e.g., ~/opt/venv)
+python3 -m venv ~/opt/venv
+source ~/opt/venv/bin/activate
+pip install --upgrade pip
+pip install -r requirements.txt
+pip install -r requirements-dev.txt
 
 # Copy and configure environment
 cp .env.example .env
@@ -69,6 +76,37 @@ make up
 # Or for development
 make up-dev
 ```
+
+### 💡 Pro Tip: Virtual Environment Helpers
+
+Add these aliases to your `~/.bashrc` or `~/.zshrc` for easier venv management:
+
+```bash
+# Quick venv management
+alias venv-create='python3 -m venv venv && source venv/bin/activate && pip install --upgrade pip'
+alias venv-on='source venv/bin/activate'
+alias venv-off='deactivate'
+
+# For custom venv location (e.g., ~/opt/venv)
+alias venv-bitcoin='source ~/opt/venv/bin/activate'
+```
+
+**Usage:**
+```bash
+# Create and activate venv in one command
+venv-create
+
+# Activate existing venv
+venv-on
+
+# Deactivate venv
+venv-off
+
+# Activate custom venv location
+venv-bitcoin
+```
+
+**Note:** Each Python project should have its own isolated virtual environment to avoid dependency conflicts.
 
 ## ⚙️ Configuration
 
@@ -116,28 +154,57 @@ echo "your_password" | docker secret create bitcoin_rpc_password -
 
 ### Command Line Interface
 
+#### Quick Start (Recommended)
+
+Use the `bitcoin-cli` launcher script - it handles venv activation automatically:
+
 ```bash
 # Get blockchain information
-export PYTHONPATH=$PYTHONPATH:./bitcoin-CLI-RPC-wrapper
-python3 src/main_wrapper.py getblockchaininfo
+./bitcoin-cli getblockchaininfo
 
 # Get current block count
-python3 src/main_wrapper.py getblockcount
+./bitcoin-cli getblockcount
 
 # Get block by hash
-python3 src/main_wrapper.py getblock 00000000000000000001f898821b0b888a912a2ac0aa3ea99ad6e8f5cbd31bde
+./bitcoin-cli getblock 00000000000000000001f898821b0b888a912a2ac0aa3ea99ad6e8f5cbd31bde
 
 # Get block hash by height
-python3 src/main_wrapper.py getblockhash 100
+./bitcoin-cli getblockhash 100
 
 # Get network information
-python3 src/main_wrapper.py getnetworkinfo
+./bitcoin-cli getnetworkinfo
 
 # Show help
-python3 src/main_wrapper.py --help
+./bitcoin-cli --help
 
 # Verbose output
-python3 src/main_wrapper.py --verbose getblockchaininfo
+./bitcoin-cli --verbose getblockchaininfo
+```
+
+**Add to PATH for easy access:**
+```bash
+# Add this to your ~/.bashrc or ~/.zshrc
+export PATH="$PATH:/Users/maxvette/dev/repository/gitpy/bitcoin-cli-rpc-wrapper"
+
+# Then use from anywhere:
+bitcoin-cli getblockchaininfo
+```
+
+#### Manual Method (Alternative)
+
+If you prefer to run manually without the launcher:
+
+```bash
+# Activate venv first
+source venv/bin/activate
+
+# Set PYTHONPATH
+export PYTHONPATH=$PYTHONPATH:./bitcoin-CLI-RPC-wrapper
+
+# Run commands
+python3 src/main_wrapper.py getblockchaininfo
+python3 src/main_wrapper.py getblockcount
+python3 src/main_wrapper.py --help
 ```
 
 ### Available Commands
